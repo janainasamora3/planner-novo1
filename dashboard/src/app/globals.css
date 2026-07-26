@@ -1,0 +1,312 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* Tema escuro idêntico ao da imagem de referência - preto puro com cards grafite */
+  --radius: 0.875rem;
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --card: #141414;
+  --card-foreground: #f5f5f5;
+  --popover: #1a1a1a;
+  --popover-foreground: #f5f5f5;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1a1a1a;
+  --muted-foreground: #8a8a8a;
+  --accent: #1c1c1c;
+  --accent-foreground: #f5f5f5;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #2563eb;
+  --chart-1: #2563eb;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #ec4899;
+  --chart-5: #8b5cf6;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f5f5f5;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1c1c;
+  --sidebar-accent-foreground: #f5f5f5;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #2563eb;
+
+  /* Cores de status — versão escura (legível em fundo preto) */
+  --status-ativo: #166534;
+  --status-pausado: #a16207;
+  --status-inativo: #7f1d1d;
+  --status-lead: #1e3a8a;
+}
+
+/* ============ TEMA CLARO ============ */
+.light {
+  --radius: 0.875rem;
+  --background: #f5f5f5;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #e5e5e5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #e5e5e5;
+  --muted-foreground: #6b6b6b;
+  --accent: #e5e5e5;
+  --accent-foreground: #0a0a0a;
+  --destructive: #ef4444;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: rgba(0, 0, 0, 0.1);
+  --ring: #2563eb;
+  --chart-1: #2563eb;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #ec4899;
+  --chart-5: #8b5cf6;
+  --sidebar: #f5f5f5;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e5e5e5;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: rgba(0, 0, 0, 0.1);
+  --sidebar-ring: #2563eb;
+
+  --status-ativo: #16a34a;
+  --status-pausado: #ca8a04;
+  --status-inativo: #dc2626;
+  --status-lead: #2563eb;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html, body {
+    @apply bg-background text-foreground;
+  }
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Scrollbar minimalista estilo macOS */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: content-box;
+}
+
+/* Animação suave para cards */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.card-enter {
+  animation: card-enter 0.3s ease-out both;
+}
+
+/* Efeito de "gla" sutil no hover dos cards */
+.card-glow:hover {
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4), 0 8px 30px rgba(37, 99, 235, 0.08);
+}
+
+/* ============================ Rich-text editor (Tiptap) ============================ */
+.rt-editor-wrapper {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.rt-editor {
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
+}
+.rt-editor:focus {
+  outline: none;
+}
+.rt-editor :where(h1) {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  line-height: 1.25;
+}
+.rt-editor :where(h2) {
+  font-size: 1.35em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  line-height: 1.3;
+}
+.rt-editor :where(h3) {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+  line-height: 1.35;
+}
+.rt-editor :where(p) {
+  margin: 0.4em 0;
+}
+.rt-editor :where(ul) {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+.rt-editor :where(ol) {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+.rt-editor :where(li) {
+  margin: 0.15em 0;
+}
+.rt-editor :where(li > p) {
+  margin: 0;
+}
+.rt-editor :where(blockquote) {
+  border-left: 3px solid hsl(var(--border));
+  padding-left: 0.9em;
+  margin: 0.6em 0;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+.rt-editor :where(blockquote) :where(p) {
+  margin: 0.2em 0;
+}
+.rt-editor :where(code) {
+  background: hsl(var(--muted));
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+.rt-editor :where(pre) {
+  background: hsl(var(--muted));
+  padding: 0.6em 0.9em;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85em;
+  margin: 0.6em 0;
+}
+.rt-editor :where(pre) :where(code) {
+  background: transparent;
+  padding: 0;
+}
+.rt-editor :where(a).rt-link,
+.rt-editor :where(a) {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  cursor: pointer;
+}
+.rt-editor :where(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 0.4em 0;
+  display: block;
+}
+.rt-editor :where(hr) {
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1em 0;
+}
+.rt-editor :where(p.is-editor-empty:first-child)::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground) / 0.6);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Scrollbar visível para abas de seções (Briefing, Tom de voz) */
+.sections-tabs-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--muted-foreground) var(--muted);
+  /* Garante overflow-x sempre visível */
+  overflow-x: scroll !important;
+}
+.sections-tabs-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.sections-tabs-scroll::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+.sections-tabs-scroll::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 5px;
+  border: 2px solid var(--muted);
+  min-width: 40px;
+}
+.sections-tabs-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground);
+}
