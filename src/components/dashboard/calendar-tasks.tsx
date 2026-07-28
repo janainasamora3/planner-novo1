@@ -11,11 +11,15 @@ import {
   RECURRENCE_LABELS,
   WEEKDAY_SHORT,
   isTaskDoneOn,
+  isSubTaskDoneOn,
+  countSubTasksDoneOn,
+  getSubTasksForDate,
   taskAppliesToDate,
   todayISO,
   type Recurrence,
   type Task,
   type TaskCategory,
+  type SubTask,
 } from "@/lib/tasks";
 import { cn, readableTextColor } from "@/lib/utils";
 
@@ -57,6 +61,10 @@ export function CalendarTasks({ onOpenSocial: _onOpenSocial }: CalendarTasksProp
     toggleDone,
     toggleSubTask,
     moveTask,
+    duplicateTask,
+    addSubTaskByDate,
+    toggleSubTaskByDate,
+    removeSubTaskByDate,
     resetAll,
     addCategory,
     updateCategory,
@@ -394,7 +402,11 @@ export function CalendarTasks({ onOpenSocial: _onOpenSocial }: CalendarTasksProp
                     dateISO={selectedDate}
                     category={categories.find((c) => c.id === task.categoryId)}
                     onToggle={() => toggleDone(task.id, selectedDate)}
-                    onToggleSub={(subId) => toggleSubTask(task.id, subId)}
+                    onToggleSub={(subId) => toggleSubTask(task.id, subId, selectedDate)}
+                    onAddDaySub={(title) => addSubTaskByDate(task.id, selectedDate, title)}
+                    onToggleDaySub={(subId) => toggleSubTaskByDate(task.id, selectedDate, subId)}
+                    onRemoveDaySub={(subId) => removeSubTaskByDate(task.id, selectedDate, subId)}
+                    onDuplicate={() => { duplicateTask(task.id); toast({ title: "Tarefa duplicada" }); }}
                     onEdit={() => openEditTask(task.id)}
                     onDragStart={(e) => handleTaskDragStart(e, task.id)}
                     onDragEnd={handleTaskDragEnd}
@@ -480,6 +492,10 @@ function TaskRow({
   category,
   onToggle,
   onToggleSub,
+  onAddDaySub,
+  onToggleDaySub,
+  onRemoveDaySub,
+  onDuplicate,
   onEdit,
   onDragStart,
   onDragEnd,
@@ -489,15 +505,25 @@ function TaskRow({
   category?: TaskCategory;
   onToggle: () => void;
   onToggleSub: (subId: string) => void;
+  onAddDaySub: (title: string) => void;
+  onToggleDaySub: (subId: string) => void;
+  onRemoveDaySub: (subId: string) => void;
+  onDuplicate: () => void;
   onEdit: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [newDaySub, setNewDaySub] = useState("");
   const done = isTaskDoneOn(task, dateISO);
-  const hasSubs = task.subtasks.length > 0;
-  const subDone = task.subtasks.filter((s) => s.done).length;
-  const subProgress = hasSubs ? (subDone / task.subtasks.length) * 100 : 0;
+  // Subtarefas do dia (específicas desta data)
+  const daySubs = getSubTasksForDate(task, dateISO).daySpecific;
+  const hasSubs = task.subtasks.length > 0 || daySubs.length > 0;
+  // Usa contagem por data (inclui nested + per-day)
+  const subStats = hasSubs ? countSubTasksDoneOn(task, dateISO) : { done: 0, total: 0 };
+  const subDone = subStats.done;
+  const subTotal = subStats.total;
+  const subProgress = subTotal > 0 ? (subDone / subTotal) * 100 : 0;
 
   return (
     <div
@@ -593,53 +619,135 @@ function TaskRow({
                 onClick={() => setExpanded((v) => !v)}
                 className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
               >
-                {subDone}/{task.subtasks.length} {expanded ? "▲" : "▼"}
+                {subDone}/{subTotal} {expanded ? "▲" : "▼"}
               </button>
             </div>
           )}
 
-          {/* Expanded subtasks */}
+          {/* Expanded subtasks (com nested) */}
           {hasSubs && expanded && (
             <div className="mt-2 space-y-1 pl-2">
-              {task.subtasks.map((s) => (
+              {task.subtasks.map((s) => {
+                const sDone = isSubTaskDoneOn(s, task, dateISO);
+                return (
+                  <div key={s.id} className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onToggleSub(s.id)}
+                        className={cn(
+                          "h-4 w-4 rounded border flex items-center justify-center text-[9px] shrink-0 transition-colors",
+                          sDone ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background"
+                        )}
+                      >
+                        {sDone ? "✓" : ""}
+                      </button>
+                      <span className={cn("text-xs", sDone ? "line-through text-muted-foreground" : "text-foreground")}>
+                        {s.title}
+                      </span>
+                    </div>
+                    {/* Subtarefas aninhadas (children) */}
+                    {s.children && s.children.length > 0 && (
+                      <div className="ml-6 space-y-0.5">
+                        {s.children.map((child) => {
+                          const cDone = isSubTaskDoneOn(child, task, dateISO);
+                          return (
+                            <div key={child.id} className="flex items-center gap-2">
+                              <button
+                                onClick={() => onToggleSub(child.id)}
+                                className={cn(
+                                  "h-3.5 w-3.5 rounded border flex items-center justify-center text-[8px] shrink-0 transition-colors",
+                                  cDone ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background"
+                                )}
+                              >
+                                {cDone ? "✓" : ""}
+                              </button>
+                              <span className={cn("text-[11px]", cDone ? "line-through text-muted-foreground" : "text-foreground/80")}>
+                                ↳ {child.title}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Subtarefas específicas deste dia (não recorrentes) */}
+          {expanded && daySubs.length > 0 && (
+            <div className="mt-2 space-y-1 pl-2 border-t border-border/50 pt-2">
+              <p className="text-[9px] uppercase text-muted-foreground font-bold">📌 Só hoje:</p>
+              {daySubs.map((s) => (
                 <div key={s.id} className="flex items-center gap-2">
                   <button
-                    onClick={() => onToggleSub(s.id)}
+                    onClick={() => onToggleDaySub(s.id)}
                     className={cn(
                       "h-4 w-4 rounded border flex items-center justify-center text-[9px] shrink-0 transition-colors",
-                      s.done
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border bg-background"
+                      s.done ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background"
                     )}
                   >
                     {s.done ? "✓" : ""}
                   </button>
-                  <span
-                    className={cn(
-                      "text-xs",
-                      s.done ? "line-through text-muted-foreground" : "text-foreground"
-                    )}
-                  >
-                    {s.title}
-                  </span>
+                  <span className={cn("text-xs flex-1", s.done && "line-through text-muted-foreground")}>{s.title}</span>
+                  <button onClick={() => onRemoveDaySub(s.id)} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
                 </div>
               ))}
             </div>
           )}
+
+          {/* Input para adicionar subtarefa específica do dia */}
+          {expanded && (
+            <div className="mt-1 pl-2 flex gap-1">
+              <input
+                type="text"
+                value={newDaySub}
+                onChange={(e) => setNewDaySub(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newDaySub.trim()) {
+                    e.preventDefault();
+                    onAddDaySub(newDaySub);
+                    setNewDaySub("");
+                  }
+                }}
+                placeholder="+ Subtarefa só pra hoje..."
+                className="flex-1 h-7 text-[11px] bg-muted/30 border border-border rounded px-2 focus:outline-none"
+              />
+              <button
+                onClick={() => {
+                  if (newDaySub.trim()) {
+                    onAddDaySub(newDaySub);
+                    setNewDaySub("");
+                  }
+                }}
+                className="h-7 px-2 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-medium"
+              >
+                +
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Edit button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-          className="text-muted-foreground hover:text-foreground text-xs px-1.5 py-1 rounded transition-colors shrink-0"
-          aria-label="Editar tarefa"
-          title="Editar"
-        >
-          ✏️
-        </button>
+        {/* Action buttons */}
+        <div className="flex flex-col gap-0.5 shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="text-muted-foreground hover:text-foreground text-xs px-1.5 py-1 rounded transition-colors"
+            aria-label="Editar tarefa"
+            title="Editar"
+          >
+            ✏️
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+            className="text-muted-foreground hover:text-blue-500 text-xs px-1.5 py-1 rounded transition-colors"
+            aria-label="Duplicar tarefa"
+            title="Duplicar"
+          >
+            📋
+          </button>
+        </div>
       </div>
     </div>
   );

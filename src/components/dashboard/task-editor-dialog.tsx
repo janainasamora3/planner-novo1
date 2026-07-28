@@ -77,6 +77,7 @@ export function TaskEditorDialog({
   const [endDate, setEndDate] = useState<string>(editingTask?.endDate ?? "");
   const [subtasks, setSubtasks] = useState<SubTask[]>(editingTask?.subtasks ?? []);
   const [newSubtask, setNewSubtask] = useState("");
+  const [newChildSub, setNewChildSub] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState(editingTask?.notes ?? "");
   const [categoryId, setCategoryId] = useState<string | undefined>(editingTask?.categoryId);
 
@@ -125,7 +126,7 @@ export function TaskEditorDialog({
     if (!newSubtask.trim()) return;
     setSubtasks([
       ...subtasks,
-      { id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, title: newSubtask.trim(), done: false },
+      { id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, title: newSubtask.trim(), done: false, doneDates: [] },
     ]);
     setNewSubtask("");
   }
@@ -135,7 +136,30 @@ export function TaskEditorDialog({
   }
 
   function toggleSubtask(id: string) {
-    setSubtasks(subtasks.map((s) => (s.id === id ? { ...s, done: !s.done } : s)));
+    setSubtasks(subtasks.map((s) => {
+      if (s.id === id) return { ...s, done: !s.done };
+      if (s.children) return { ...s, children: s.children.map((c) => c.id === id ? { ...c, done: !c.done } : c) };
+      return s;
+    }));
+  }
+
+  // Inicia modo de adicionar child a uma subtarefa
+  function addChildToSubtask(parentId: string) {
+    setSubtasks(subtasks.map((s) => s.id === parentId ? { ...s, children: s.children ?? [] } : s));
+  }
+
+  // Adiciona child com texto do input
+  function addChildWithText(parentId: string) {
+    const text = (newChildSub[parentId] ?? "").trim();
+    if (!text) return;
+    const newChild: SubTask = { id: `st_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, title: text, done: false, doneDates: [] };
+    setSubtasks(subtasks.map((s) => s.id === parentId ? { ...s, children: [...(s.children ?? []), newChild] } : s));
+    setNewChildSub((prev) => ({ ...prev, [parentId]: "" }));
+  }
+
+  // Remove child de uma subtarefa
+  function removeChildFromSubtask(parentId: string, childId: string) {
+    setSubtasks(subtasks.map((s) => s.id === parentId ? { ...s, children: (s.children ?? []).filter((c) => c.id !== childId) } : s));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -468,53 +492,43 @@ export function TaskEditorDialog({
             </div>
           </div>
 
-          {/* Subtasks */}
+          {/* Subtasks (com nested) */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Subtarefas</Label>
             <div className="space-y-1">
               {subtasks.map((s) => (
-                <div key={s.id} className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/30">
-                  <button
-                    type="button"
-                    onClick={() => toggleSubtask(s.id)}
-                    className={cn(
-                      "h-4 w-4 rounded border flex items-center justify-center text-[10px] shrink-0 transition-colors",
-                      s.done
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border bg-background"
-                    )}
-                  >
-                    {s.done ? "✓" : ""}
-                  </button>
-                  <span className={cn("text-xs flex-1", s.done && "line-through text-muted-foreground")}>
-                    {s.title}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeSubtask(s.id)}
-                    className="text-xs text-muted-foreground hover:text-destructive"
-                  >
-                    ✕
-                  </button>
+                <div key={s.id} className="space-y-0.5">
+                  <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/30">
+                    <button type="button" onClick={() => toggleSubtask(s.id)} className={cn("h-4 w-4 rounded border flex items-center justify-center text-[10px] shrink-0 transition-colors", s.done ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background")}>{s.done ? "✓" : ""}</button>
+                    <span className={cn("text-xs flex-1", s.done && "line-through text-muted-foreground")}>{s.title}</span>
+                    <button type="button" onClick={() => addChildToSubtask(s.id)} className="text-[10px] text-blue-500 hover:text-blue-400" title="Adicionar subtarefa secundária">＋</button>
+                    <button type="button" onClick={() => removeSubtask(s.id)} className="text-xs text-muted-foreground hover:text-destructive">✕</button>
+                  </div>
+                  {/* Children (subtarefas aninhadas) */}
+                  {s.children && s.children.length > 0 && (
+                    <div className="ml-6 space-y-0.5">
+                      {s.children.map((child) => (
+                        <div key={child.id} className="flex items-center gap-2 px-2 py-0.5 rounded-md bg-muted/20">
+                          <button type="button" onClick={() => toggleSubtask(child.id)} className={cn("h-3.5 w-3.5 rounded border flex items-center justify-center text-[9px] shrink-0 transition-colors", child.done ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background")}>{child.done ? "✓" : ""}</button>
+                          <span className={cn("text-[11px] flex-1", child.done && "line-through text-muted-foreground")}>↳ {child.title}</span>
+                          <button type="button" onClick={() => removeChildFromSubtask(s.id, child.id)} className="text-[10px] text-muted-foreground hover:text-destructive">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Input para adicionar child */}
+                  {s.children !== undefined && (
+                    <div className="ml-6 flex gap-1">
+                      <Input value={newChildSub[s.id] ?? ""} onChange={(e) => setNewChildSub((prev) => ({ ...prev, [s.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChildWithText(s.id); } }} placeholder="Subtarefa secundária..." className="h-7 text-[11px] bg-muted/20 border-border" />
+                      <Button type="button" variant="ghost" size="sm" onClick={() => addChildWithText(s.id)} className="h-7 px-2 text-[10px]">+</Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
             <div className="flex gap-1">
-              <Input
-                value={newSubtask}
-                onChange={(e) => setNewSubtask(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addSubtask();
-                  }
-                }}
-                placeholder="Nova subtarefa..."
-                className="h-8 text-xs bg-muted/30 border-border"
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addSubtask} className="h-8">
-                +
-              </Button>
+              <Input value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSubtask(); } }} placeholder="Nova subtarefa..." className="h-8 text-xs bg-muted/30 border-border" />
+              <Button type="button" variant="outline" size="sm" onClick={addSubtask} className="h-8">+</Button>
             </div>
           </div>
 

@@ -9,6 +9,7 @@ import {
   RECURRENCE_LABELS,
   WEEKDAY_SHORT,
   isTaskDoneOn,
+  countSubTasksDoneOn,
   taskAppliesToDate,
   todayISO,
   getUpcomingDates,
@@ -89,7 +90,7 @@ export function TasksManager({ page, onClose }: TasksManagerProps) {
 
 // =================== Tabela estilo Notion ===================
 function TaskTableView() {
-  const { tasks, categories, addTask, updateTask, removeTask, toggleDone, addCategory, updateCategory, removeCategory } = useTasks();
+  const { tasks, categories, addTask, updateTask, removeTask, toggleDone, duplicateTask, addCategory, updateCategory, removeCategory } = useTasks();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todos" | "pendentes" | "concluidas">("todos");
@@ -117,6 +118,7 @@ function TaskTableView() {
     setEditingId(null);
   }
   function handleDelete(id: string) { const t = tasks.find((x) => x.id === id); removeTask(id); toast({ title: "Tarefa excluída", description: t?.title, variant: "destructive" }); setEditorOpen(false); setEditingId(null); }
+  function handleDuplicate(id: string) { const clone = duplicateTask(id); if (clone) toast({ title: "Tarefa duplicada", description: clone.title }); }
 
   const catById = (id?: string) => categories.find((c) => c.id === id);
 
@@ -181,7 +183,7 @@ function TaskTableView() {
                       <div className="flex items-center gap-2">
                         {task.emoji && <span className="text-base">{task.emoji}</span>}
                         <span className={cn("text-xs font-bold text-foreground", done && "line-through text-muted-foreground")}>{task.title}</span>
-                        {task.subtasks.length > 0 && <span className="text-[9px] bg-muted/40 text-muted-foreground px-1 py-0.5 rounded">{task.subtasks.filter((s) => s.done).length}/{task.subtasks.length}</span>}
+                        {task.subtasks.length > 0 && (() => { const ss = countSubTasksDoneOn(task, today); return <span className="text-[9px] bg-muted/40 text-muted-foreground px-1 py-0.5 rounded">{ss.done}/{ss.total}</span>; })()}
                       </div>
                     </td>
                     <td className="px-3 py-2"><span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded" style={done ? STATUS_TAG_STYLES.done : STATUS_TAG_STYLES.pending}>{done ? "✓ Concluída" : "Não iniciado"}</span></td>
@@ -192,6 +194,7 @@ function TaskTableView() {
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <button onClick={() => { setEditingId(task.id); setEditorOpen(true); }} className="h-6 w-6 rounded text-muted-foreground hover:text-foreground hover:bg-accent text-[10px] flex items-center justify-center" title="Editar">✏️</button>
+                        <button onClick={() => handleDuplicate(task.id)} className="h-6 w-6 rounded text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 text-[10px] flex items-center justify-center" title="Duplicar">📋</button>
                         <button onClick={() => { if (confirm(`Excluir "${task.title}"?`)) handleDelete(task.id); }} className="h-6 w-6 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-[10px] flex items-center justify-center" title="Excluir">🗑️</button>
                       </div>
                     </td>

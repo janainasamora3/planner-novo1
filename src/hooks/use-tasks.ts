@@ -34,7 +34,7 @@ function sanitizeTask(raw: unknown, fallback?: Partial<Task>): Task | null {
   if (typeof t.id !== "string" || !t.id) return null;
   if (typeof t.title !== "string" || !t.title) return null;
 
-  // Sanitiza subtasks
+  // Sanitiza subtasks (inclui doneDates e children para nested)
   let subtasks: Task["subtasks"] = [];
   if (Array.isArray(t.subtasks)) {
     subtasks = t.subtasks
@@ -42,10 +42,34 @@ function sanitizeTask(raw: unknown, fallback?: Partial<Task>): Task | null {
         if (!s || typeof s !== "object") return null;
         const sub = s as Record<string, unknown>;
         if (typeof sub.id !== "string" || typeof sub.title !== "string") return null;
+        // Sanitiza doneDates (array de strings)
+        let doneDates: string[] | undefined;
+        if (Array.isArray(sub.doneDates)) {
+          doneDates = sub.doneDates.filter((d): d is string => typeof d === "string");
+        }
+        // Sanitiza children (recursivo)
+        let children: Task["subtasks"] | undefined;
+        if (Array.isArray(sub.children) && sub.children.length > 0) {
+          children = sub.children
+            .map((c) => {
+              if (!c || typeof c !== "object") return null;
+              const ch = c as Record<string, unknown>;
+              if (typeof ch.id !== "string" || typeof ch.title !== "string") return null;
+              return {
+                id: ch.id,
+                title: ch.title,
+                done: Boolean(ch.done),
+                doneDates: Array.isArray(ch.doneDates) ? ch.doneDates.filter((d): d is string => typeof d === "string") : undefined,
+              } as Task["subtasks"][number];
+            })
+            .filter((c): c is Task["subtasks"][number] => c !== null);
+        }
         return {
           id: sub.id,
           title: sub.title,
           done: Boolean(sub.done),
+          doneDates,
+          children,
         };
       })
       .filter((s): s is Task["subtasks"][number] => s !== null);
@@ -55,6 +79,26 @@ function sanitizeTask(raw: unknown, fallback?: Partial<Task>): Task | null {
   let completedDates: string[] = [];
   if (Array.isArray(t.completedDates)) {
     completedDates = t.completedDates.filter((d): d is string => typeof d === "string");
+  }
+
+  // Sanitiza subtasksByDate (subtarefas específicas por dia)
+  let subtasksByDate: Record<string, SubTask[]> | undefined;
+  if (t.subtasksByDate && typeof t.subtasksByDate === "object") {
+    const clean: Record<string, SubTask[]> = {};
+    for (const [date, subs] of Object.entries(t.subtasksByDate as Record<string, unknown>)) {
+      if (typeof date === "string" && Array.isArray(subs)) {
+        const sanitizedSubs = subs
+          .map((s): SubTask | null => {
+            if (!s || typeof s !== "object") return null;
+            const x = s as Record<string, unknown>;
+            if (typeof x.id !== "string" || typeof x.title !== "string") return null;
+            return { id: x.id, title: x.title, done: Boolean(x.done), doneDates: Array.isArray(x.doneDates) ? x.doneDates.filter((d): d is string => typeof d === "string") : undefined };
+          })
+          .filter((s): s is SubTask => s !== null);
+        if (sanitizedSubs.length > 0) clean[date] = sanitizedSubs;
+      }
+    }
+    if (Object.keys(clean).length > 0) subtasksByDate = clean;
   }
 
   // Sanitiza recurrence (aceita valor inválido como "none")
@@ -99,6 +143,7 @@ function sanitizeTask(raw: unknown, fallback?: Partial<Task>): Task | null {
     endCount,
     endDate,
     completedDates,
+    subtasksByDate,
     categoryId: typeof t.categoryId === "string" ? t.categoryId : undefined,
     notes: typeof t.notes === "string" ? t.notes : undefined,
     createdAt: typeof t.createdAt === "number" ? t.createdAt : Date.now(),
@@ -332,20 +377,137 @@ export function useTasks() {
     }
   }, []);
 
-  /** Marca/desmarca subtask. */
-  const toggleSubTask = useCallback((taskId: string, subId: string) => {
+  /** Marca/desmarca subtask. Para tarefas recorrentes, rastreia por data. */
+  const toggleSubTask = useCallback((taskId: string, subId: string, dateISO?: string) => {
     const task = read().find((t) => t.id === taskId);
     if (!task) return;
     const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
-    const nextSubs = subtasks.map((s) =>
-      s.id === subId ? { ...s, done: !s.done } : s
-    );
-    write(read().map((t) => (t.id === taskId ? { ...t, subtasks: nextSubs, updatedAt: Date.now() } : t)));
+
+    // Função recursiva para togglear subtasks (inclui nested)
+    function toggleSubs(subs: SubTask[]): SubTask[] {
+      return subs.map((s) => {
+        if (s.id === subId) {
+          if (task.recurrence !== "none" && dateISO) {
+            // Tarefa recorrente: toggle por data
+            const doneDates = Array.isArray(s.doneDates) ? s.doneDates : [];
+            const isDone = doneDates.includes(dateISO);
+            return {
+              ...s,
+              doneDates: isDone ? doneDates.filter((d) => d !== dateISO) : [...doneDates, dateISO],
+              done: isDone ? s.done : true, // sync done para compat
+            };
+          }
+          // Tarefa sem recorrência: toggle simples
+          return { ...s, done: !s.done };
+        }
+        // Recursão em children
+        if (s.children && s.children.length > 0) {
+          return { ...s, children: toggleSubs(s.children) };
+        }
+        return s;
+      });
+    }
+
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasks: toggleSubs(subtasks), updatedAt: Date.now() } : t)));
   }, []);
 
   /** Move tarefa para outra data (drag-and-drop). */
   const moveTask = useCallback((id: string, newDate: string) => {
     write(read().map((t) => (t.id === id ? { ...t, date: newDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Duplica uma tarefa (com novas IDs, resetando conclusões). */
+  const duplicateTask = useCallback((id: string) => {
+    const task = read().find((t) => t.id === id);
+    if (!task) return null;
+    const now = Date.now();
+    function cloneSubs(subs: SubTask[]): SubTask[] {
+      return subs.map((s) => ({
+        id: `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+        title: s.title,
+        done: false,
+        doneDates: [],
+        children: s.children ? cloneSubs(s.children) : undefined,
+      }));
+    }
+    const clone: Task = {
+      ...task,
+      id: makeId("task"),
+      title: `${task.title} (cópia)`,
+      done: false,
+      completedDates: [],
+      subtasks: cloneSubs(task.subtasks),
+      createdAt: now,
+      updatedAt: now,
+    };
+    write([...read(), clone]);
+    return clone;
+  }, []);
+
+  /** Adiciona subtarefa aninhada (child) a uma subtarefa existente. */
+  const addNestedSubTask = useCallback((taskId: string, parentSubId: string, title: string) => {
+    if (!title.trim()) return;
+    const task = read().find((t) => t.id === taskId);
+    if (!task) return;
+    function addNested(subs: SubTask[]): SubTask[] {
+      return subs.map((s) => {
+        if (s.id === parentSubId) {
+          const newChild: SubTask = {
+            id: `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+            title: title.trim(),
+            done: false,
+            doneDates: [],
+          };
+          return { ...s, children: [...(s.children ?? []), newChild] };
+        }
+        if (s.children && s.children.length > 0) {
+          return { ...s, children: addNested(s.children) };
+        }
+        return s;
+      });
+    }
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasks: addNested(t.subtasks), updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Remove subtarefa (inclui nested). */
+  const removeSubTask = useCallback((taskId: string, subId: string) => {
+    const task = read().find((t) => t.id === taskId);
+    if (!task) return;
+    function removeSubs(subs: SubTask[]): SubTask[] {
+      const filtered = subs.filter((s) => s.id !== subId);
+      return filtered.map((s) => (s.children ? { ...s, children: removeSubs(s.children) } : s));
+    }
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasks: removeSubs(t.subtasks), updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Adiciona subtarefa específica de um dia (não recorrente). */
+  const addSubTaskByDate = useCallback((taskId: string, dateISO: string, title: string) => {
+    if (!title.trim()) return;
+    const task = read().find((t) => t.id === taskId);
+    if (!task) return;
+    const byDate = { ...(task.subtasksByDate ?? {}) };
+    const newSub: SubTask = { id: `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: title.trim(), done: false };
+    byDate[dateISO] = [...(byDate[dateISO] ?? []), newSub];
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Toggle subtarefa específica de um dia. */
+  const toggleSubTaskByDate = useCallback((taskId: string, dateISO: string, subId: string) => {
+    const task = read().find((t) => t.id === taskId);
+    if (!task || !task.subtasksByDate || !task.subtasksByDate[dateISO]) return;
+    const byDate = { ...task.subtasksByDate };
+    byDate[dateISO] = byDate[dateISO].map((s) => (s.id === subId ? { ...s, done: !s.done } : s));
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Remove subtarefa específica de um dia. */
+  const removeSubTaskByDate = useCallback((taskId: string, dateISO: string, subId: string) => {
+    const task = read().find((t) => t.id === taskId);
+    if (!task || !task.subtasksByDate || !task.subtasksByDate[dateISO]) return;
+    const byDate = { ...task.subtasksByDate };
+    byDate[dateISO] = byDate[dateISO].filter((s) => s.id !== subId);
+    if (byDate[dateISO].length === 0) delete byDate[dateISO];
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
   }, []);
 
   const resetAll = useCallback(() => {
@@ -389,6 +551,12 @@ export function useTasks() {
     toggleDone,
     toggleSubTask,
     moveTask,
+    duplicateTask,
+    addNestedSubTask,
+    removeSubTask,
+    addSubTaskByDate,
+    toggleSubTaskByDate,
+    removeSubTaskByDate,
     resetAll,
     addCategory,
     updateCategory,

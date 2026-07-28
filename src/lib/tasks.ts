@@ -11,7 +11,12 @@ export type RecurrenceEndMode = "never" | "count" | "date";
 export interface SubTask {
   id: string;
   title: string;
+  /** Para tarefas sem recorrência: marca como concluída */
   done: boolean;
+  /** Para tarefas com recorrência: datas em que a subtarefa foi concluída (yyyy-mm-dd) */
+  doneDates?: string[];
+  /** Subtarefas aninhadas (subtarefas secundárias dentro desta) */
+  children?: SubTask[];
 }
 
 export interface TaskCategory {
@@ -52,6 +57,8 @@ export interface Task {
   endDate?: string;
   /** ISO dates (yyyy-mm-dd) where this task was completed (for recurrence history) */
   completedDates: string[];
+  /** Subtarefas específicas de um dia: { 'yyyy-mm-dd': SubTask[] } */
+  subtasksByDate?: Record<string, SubTask[]>;
   categoryId?: string;
   notes?: string;
   createdAt: number;
@@ -95,6 +102,72 @@ export function isTaskDoneOn(task: Task, dateISO: string): boolean {
   // Defensivo: completedDates pode estar undefined em dados antigos/corrompidos
   const completedDates = Array.isArray(task.completedDates) ? task.completedDates : [];
   return completedDates.includes(dateISO);
+}
+
+/** Verifica se uma subtarefa foi concluída numa data específica. */
+export function isSubTaskDoneOn(subtask: SubTask, task: Task, dateISO: string): boolean {
+  if (task.recurrence === "none") return Boolean(subtask.done);
+  // Para tarefas recorrentes: usa doneDates
+  const doneDates = Array.isArray(subtask.doneDates) ? subtask.doneDates : [];
+  return doneDates.includes(dateISO);
+}
+
+/** Conta subtarefas concluídas numa data específica (inclui nested + per-day). */
+export function countSubTasksDoneOn(task: Task, dateISO: string): { done: number; total: number } {
+  let done = 0;
+  let total = 0;
+  function countSubs(subs: SubTask[]) {
+    for (const s of subs) {
+      total++;
+      if (isSubTaskDoneOn(s, task, dateISO)) done++;
+      if (s.children && s.children.length > 0) countSubs(s.children);
+    }
+  }
+  // Subtarefas recorrentes (aparecem todos os dias)
+  if (Array.isArray(task.subtasks)) countSubs(task.subtasks);
+  // Subtarefas do dia (só aparecem nesta data)
+  if (task.subtasksByDate && task.subtasksByDate[dateISO]) {
+    countSubs(task.subtasksByDate[dateISO]);
+  }
+  return { done, total };
+}
+
+/** Retorna todas as subtarefas visíveis numa data (recorrentes + per-day). */
+export function getSubTasksForDate(task: Task, dateISO: string): { recurring: SubTask[]; daySpecific: SubTask[] } {
+  const recurring = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const daySpecific = (task.subtasksByDate && task.subtasksByDate[dateISO]) ? task.subtasksByDate[dateISO] : [];
+  return { recurring, daySpecific };
+}
+
+/** Clona uma tarefa inteira (com novas IDs para ela e subtarefas). */
+export function cloneTaskForDuplicate(task: Task): Omit<Task, "id" | "createdAt" | "updatedAt"> {
+  function cloneSubs(subs: SubTask[]): SubTask[] {
+    return subs.map((s) => ({
+      id: `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      title: s.title,
+      done: false,
+      doneDates: [],
+      children: s.children ? cloneSubs(s.children) : undefined,
+    }));
+  }
+  return {
+    title: `${task.title} (cópia)`,
+    emoji: task.emoji,
+    color: task.color,
+    date: task.date,
+    time: task.time,
+    done: false,
+    subtasks: cloneSubs(task.subtasks),
+    recurrence: task.recurrence,
+    weekdays: task.weekdays ? [...task.weekdays] : undefined,
+    endMode: task.endMode,
+    endCount: task.endCount,
+    endDate: task.endDate,
+    completedDates: [],
+    subtasksByDate: {},
+    categoryId: task.categoryId,
+    notes: task.notes,
+  };
 }
 
 /** Verifica se a tarefa se aplica a uma data específica. */
