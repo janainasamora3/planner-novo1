@@ -29,7 +29,7 @@ interface AddPageDialogProps {
     color: string;
     imageUrl: string;
     content: string;
-    special?: "enterprise" | undefined;
+    special?: string | undefined;
   }) => void;
   onDelete?: (id: string) => void;
 }
@@ -44,6 +44,16 @@ const PRESET_EMOJIS = [
   "📱","🎧","👑","🛒","♟️","🤝","✅","🧠",
   "🗓️","💸","📚","🏃","🥗","🔐","🩺","📖",
   "🔑","✈️","🧹","🌹","📸","💡","🎯","🚀",
+];
+
+// Templates rápidos para a seção Vida Pessoal
+const TEMPLATES = [
+  { title: "Tarefas", emoji: "✅", color: "#7c2d12", special: "quick-tasks", desc: "Lista de tarefas sem data + sortear" },
+  { title: "Modo Caverna", emoji: "🧠", color: "#1e293b", special: "caverna", desc: "Habit tracker diário" },
+  { title: "Planejamento", emoji: "🗓️", color: "#1e3a8a", special: "planejamento", desc: "Viagens, passeios, desejos" },
+  { title: "Finanças", emoji: "💸", color: "#14532d", special: "finance", desc: "Transações, metas, contas fixas" },
+  { title: "Livros", emoji: "📖", color: "#3f3f46", special: "books", desc: "Acervo + agenda de leitura" },
+  { title: "Ideias", emoji: "💡", color: "#1e1b4b", special: "ideas", desc: "Anotações + checklist" },
 ];
 
 export function AddPageDialog({
@@ -67,11 +77,10 @@ export function AddPageDialog({
   const [color, setColor] = useState(editingPage?.color ?? PRESET_COLORS[0]);
   const [imageUrl, setImageUrl] = useState(editingPage?.imageUrl ?? "");
   const [content, setContent] = useState(editingPage?.content ?? "");
-  // "Página empresarial" = abre o EnterpriseManager ao clicar (igual às páginas de negócios padrão)
-  // Default: ligado quando cria nova página na seção "negocios", desligado em "pessoal"
-  // Ao editar, respeita o valor atual da página
-  const [isEnterprise, setIsEnterprise] = useState<boolean>(
-    editingPage ? editingPage.special === "enterprise" : defaultSection === "negocios"
+  // Tipo especial da página (enterprise, quick-tasks, ideas, etc.)
+  // Default: "enterprise" quando cria na seção "negocios", undefined em "pessoal"
+  const [specialType, setSpecialType] = useState<string | undefined>(
+    editingPage ? editingPage.special : defaultSection === "negocios" ? "enterprise" : undefined
   );
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -112,7 +121,7 @@ export function AddPageDialog({
       color,
       imageUrl,
       content: content.trim(),
-      special: isEnterprise ? "enterprise" : undefined,
+      special: specialType,
     });
     onOpenChange(false);
   }
@@ -232,39 +241,59 @@ export function AddPageDialog({
             </div>
           </div>
 
-          {/* Toggle: Página empresarial (abre EnterpriseManager) */}
+          {/* Tipo de página (templates) */}
           <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => setIsEnterprise(!isEnterprise)}
-              className={cn(
-                "w-full flex items-center justify-between gap-3 p-3 rounded-lg border transition-colors text-left",
-                isEnterprise
-                  ? "border-blue-500/50 bg-blue-600/10"
-                  : "border-border bg-muted/20 hover:border-foreground/25"
-              )}
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <span>🏢</span>
-                  Página empresarial
-                </p>
-                <p className="text-[11px] text-foreground/60 mt-0.5">
-                  {isEnterprise
-                    ? "Ao clicar no card, abre o gerenciador de empresa (Tarefas, CRM, Financeiro, etc.)"
-                    : "Ao clicar no card, abre uma página simples de anotações"}
-                </p>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tipo de página</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {/* Nenhuma (página simples) */}
+              <button
+                type="button"
+                onClick={() => setSpecialType(undefined)}
+                className={cn(
+                  "p-2.5 rounded-lg border text-left transition-all",
+                  !specialType ? "border-foreground bg-foreground/5 scale-[1.02]" : "border-border bg-muted/20 hover:border-foreground/25"
+                )}
+              >
+                <p className="text-xs font-bold flex items-center gap-1">📄 Página simples</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Apenas anotações</p>
+              </button>
+              {/* Empresarial */}
+              <button
+                type="button"
+                onClick={() => setSpecialType("enterprise")}
+                className={cn(
+                  "p-2.5 rounded-lg border text-left transition-all",
+                  specialType === "enterprise" ? "border-blue-500 bg-blue-600/10 scale-[1.02]" : "border-border bg-muted/20 hover:border-foreground/25"
+                )}
+              >
+                <p className="text-xs font-bold flex items-center gap-1">🏢 Empresarial</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Tarefas, CRM, Financeiro</p>
+              </button>
+            </div>
+            {/* Templates da Vida Pessoal */}
+            {section === "pessoal" && (
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.special}
+                    type="button"
+                    onClick={() => {
+                      setSpecialType(tpl.special);
+                      setTitle(tpl.title);
+                      setEmoji(tpl.emoji);
+                      setColor(tpl.color);
+                    }}
+                    className={cn(
+                      "p-2.5 rounded-lg border text-left transition-all",
+                      specialType === tpl.special ? "border-foreground bg-foreground/5 scale-[1.02]" : "border-border bg-muted/20 hover:border-foreground/25"
+                    )}
+                  >
+                    <p className="text-xs font-bold flex items-center gap-1">{tpl.emoji} {tpl.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{tpl.desc}</p>
+                  </button>
+                ))}
               </div>
-              <div className={cn(
-                "shrink-0 h-6 w-11 rounded-full p-0.5 transition-colors",
-                isEnterprise ? "bg-blue-600" : "bg-muted-foreground/30"
-              )}>
-                <div className={cn(
-                  "h-5 w-5 rounded-full bg-white transition-transform",
-                  isEnterprise ? "translate-x-5" : "translate-x-0"
-                )} />
-              </div>
-            </button>
+            )}
           </div>
 
           {/* Título */}

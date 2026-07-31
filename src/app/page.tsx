@@ -113,13 +113,13 @@ export default function Home() {
     color: string;
     imageUrl: string;
     content: string;
-    special?: "enterprise" | undefined;
+    special?: string | undefined;
   }) {
     if (editingPageId) {
-      updatePage(editingPageId, data);
+      updatePage(editingPageId, data as Parameters<typeof updatePage>[1]);
       toast({ title: "Página atualizada", description: data.title });
     } else {
-      addPage(data);
+      addPage(data as Parameters<typeof addPage>[0]);
       toast({ title: "Página criada", description: data.title });
     }
     setEditingPageId(null);
