@@ -24,7 +24,7 @@ function sanitizePage(raw: unknown): PageCard | null {
 
   const specialRaw = p.special;
   const special: PageCard["special"] | undefined =
-    specialRaw === "social-media" || specialRaw === "enterprise" || specialRaw === "business-plan" || specialRaw === "books" || specialRaw === "tasks" || specialRaw === "caverna" || specialRaw === "planejamento" || specialRaw === "finance" || specialRaw === "ideas" || specialRaw === "quick-tasks"
+    specialRaw === "social-media" || specialRaw === "enterprise" || specialRaw === "business-plan" || specialRaw === "books" || specialRaw === "tasks" || specialRaw === "caverna" || specialRaw === "planejamento" || specialRaw === "finance" || specialRaw === "ideas" || specialRaw === "quick-tasks" || specialRaw === "fitness"
       ? specialRaw
       : undefined;
 
@@ -82,6 +82,7 @@ function read(): PageCard[] {
       p3: "planejamento",
       p4: "finance",
       p5: "ideas",
+      p7: "fitness",
       p10: "books",
     };
     // Mapa title (lowercase) → special (para casos onde o id mudou)
@@ -92,6 +93,7 @@ function read(): PageCard[] {
       financas: "finance",
       finanças: "finance",
       ideias: "ideas",
+      fitness: "fitness",
       livros: "books",
     };
     let changed = false;

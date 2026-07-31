@@ -13,7 +13,7 @@ export interface PageCard {
   /** Notas/conteúdo livre da página (markdown simples). */
   content?: string;
   /** Marca páginas com funcionalidade especial */
-  special?: "social-media" | "enterprise" | "business-plan" | "books" | "tasks" | "caverna" | "planejamento" | "finance" | "quick-tasks" | "ideas";
+  special?: "social-media" | "enterprise" | "business-plan" | "books" | "tasks" | "caverna" | "planejamento" | "finance" | "quick-tasks" | "ideas" | "fitness";
   createdAt: number;
   updatedAt: number;
 }
@@ -49,7 +49,7 @@ export const DEFAULT_PAGES: PageCard[] = [
   { id: "p4", section: "pessoal", title: "Finanças", emoji: "💸", color: "#14532d", special: "finance", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p5", section: "pessoal", title: "Ideias", emoji: "💡", color: "#1e1b4b", special: "ideas", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p6", section: "pessoal", title: "Exercícios", emoji: "🏃", color: "#7c2d12", createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "p7", section: "pessoal", title: "Fitness", emoji: "🥗", color: "#166534", createdAt: Date.now(), updatedAt: Date.now() },
+  { id: "p7", section: "pessoal", title: "Fitness", emoji: "🥗", color: "#166534", special: "fitness", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p8", section: "pessoal", title: "Senhas", emoji: "🔐", color: "#713f12", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p9", section: "pessoal", title: "Saúde", emoji: "🩺", color: "#7f1d1d", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p10", section: "pessoal", title: "Livros", emoji: "📖", color: "#3f3f46", special: "books", createdAt: Date.now(), updatedAt: Date.now() },

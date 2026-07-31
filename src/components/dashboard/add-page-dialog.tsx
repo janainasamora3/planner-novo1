@@ -54,6 +54,7 @@ const TEMPLATES = [
   { title: "Finanças", emoji: "💸", color: "#14532d", special: "finance", desc: "Transações, metas, contas fixas" },
   { title: "Livros", emoji: "📖", color: "#3f3f46", special: "books", desc: "Acervo + agenda de leitura" },
   { title: "Ideias", emoji: "💡", color: "#1e1b4b", special: "ideas", desc: "Anotações + checklist" },
+  { title: "Fitness", emoji: "🥗", color: "#166534", special: "fitness", desc: "Medidas + refeições + receitas" },
 ];
 
 export function AddPageDialog({

@@ -19,6 +19,7 @@ import { PlanejamentoManager } from "@/components/dashboard/planejamento-manager
 import { FinanceManager } from "@/components/dashboard/finance-manager";
 import { IdeasManager } from "@/components/dashboard/ideas-manager";
 import { QuickTasksManager } from "@/components/dashboard/quick-tasks-manager";
+import { FitnessManager } from "@/components/dashboard/fitness-manager";
 import { CalendarTasks } from "@/components/dashboard/calendar-tasks";
 import { BackupSection } from "@/components/dashboard/backup-section";
 
@@ -52,6 +53,7 @@ export default function Home() {
   const [financePage, setFinancePage] = useState<PageCard | null>(null);
   const [ideasPage, setIdeasPage] = useState<PageCard | null>(null);
   const [quickTasksPage, setQuickTasksPage] = useState<PageCard | null>(null);
+  const [fitnessPage, setFitnessPage] = useState<PageCard | null>(null);
 
   const editingPage = useMemo(
     () => pages.find((p) => p.id === editingPageId) || null,
@@ -95,6 +97,8 @@ export default function Home() {
       setIdeasPage(page);
     } else if (page.special === "quick-tasks") {
       setQuickTasksPage(page);
+    } else if (page.special === "fitness") {
+      setFitnessPage(page);
     } else {
       setDetailPage(page);
     }
@@ -380,6 +384,11 @@ export default function Home() {
       {/* Gerenciador de Tarefas Rápidas */}
       {quickTasksPage && (
         <QuickTasksManager page={quickTasksPage} onClose={() => setQuickTasksPage(null)} />
+      )}
+
+      {/* Gerenciador de Fitness */}
+      {fitnessPage && (
+        <FitnessManager page={fitnessPage} onClose={() => setFitnessPage(null)} />
       )}
     </div>
   );
