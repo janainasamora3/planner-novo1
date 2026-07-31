@@ -24,7 +24,7 @@ function sanitizePage(raw: unknown): PageCard | null {
 
   const specialRaw = p.special;
   const special: PageCard["special"] | undefined =
-    specialRaw === "social-media" || specialRaw === "enterprise" || specialRaw === "business-plan" || specialRaw === "books" || specialRaw === "tasks" || specialRaw === "caverna" || specialRaw === "planejamento" || specialRaw === "finance"
+    specialRaw === "social-media" || specialRaw === "enterprise" || specialRaw === "business-plan" || specialRaw === "books" || specialRaw === "tasks" || specialRaw === "caverna" || specialRaw === "planejamento" || specialRaw === "finance" || specialRaw === "ideas" || specialRaw === "quick-tasks"
       ? specialRaw
       : undefined;
 
@@ -77,19 +77,21 @@ function read(): PageCard[] {
     // Necessário porque versões antigas do app salvavam páginas sem special.
     // Mapa id → special esperado (para páginas padrão)
     const specialById: Record<string, PageCard["special"]> = {
-      p1: "tasks",
+      p1: "quick-tasks",
       p2: "caverna",
       p3: "planejamento",
       p4: "finance",
+      p5: "ideas",
       p10: "books",
     };
     // Mapa title (lowercase) → special (para casos onde o id mudou)
     const specialByTitle: Record<string, PageCard["special"]> = {
-      tarefas: "tasks",
+      tarefas: "quick-tasks",
       "modo caverna": "caverna",
       planejamento: "planejamento",
       financas: "finance",
       finanças: "finance",
+      ideias: "ideas",
       livros: "books",
     };
     let changed = false;

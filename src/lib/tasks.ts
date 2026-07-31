@@ -116,18 +116,25 @@ export function isSubTaskDoneOn(subtask: SubTask, task: Task, dateISO: string): 
 export function countSubTasksDoneOn(task: Task, dateISO: string): { done: number; total: number } {
   let done = 0;
   let total = 0;
-  function countSubs(subs: SubTask[]) {
+  // Subtarefas recorrentes (aparecem todos os dias) — usa isSubTaskDoneOn
+  function countRecurringSubs(subs: SubTask[]) {
     for (const s of subs) {
       total++;
       if (isSubTaskDoneOn(s, task, dateISO)) done++;
-      if (s.children && s.children.length > 0) countSubs(s.children);
+      if (s.children && s.children.length > 0) countRecurringSubs(s.children);
     }
   }
-  // Subtarefas recorrentes (aparecem todos os dias)
-  if (Array.isArray(task.subtasks)) countSubs(task.subtasks);
-  // Subtarefas do dia (só aparecem nesta data)
+  // Subtarefas do dia (só aparecem nesta data) — usa done diretamente
+  function countDaySubs(subs: SubTask[]) {
+    for (const s of subs) {
+      total++;
+      if (s.done) done++;
+      if (s.children && s.children.length > 0) countDaySubs(s.children);
+    }
+  }
+  if (Array.isArray(task.subtasks)) countRecurringSubs(task.subtasks);
   if (task.subtasksByDate && task.subtasksByDate[dateISO]) {
-    countSubs(task.subtasksByDate[dateISO]);
+    countDaySubs(task.subtasksByDate[dateISO]);
   }
   return { done, total };
 }

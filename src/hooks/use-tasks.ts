@@ -486,8 +486,46 @@ export function useTasks() {
     const task = read().find((t) => t.id === taskId);
     if (!task) return;
     const byDate = { ...(task.subtasksByDate ?? {}) };
-    const newSub: SubTask = { id: `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: title.trim(), done: false };
+    const newSub: SubTask = { id: `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: title.trim(), done: false, children: [] };
     byDate[dateISO] = [...(byDate[dateISO] ?? []), newSub];
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Adiciona child a uma subtarefa do dia. */
+  const addNestedSubTaskByDate = useCallback((taskId: string, dateISO: string, parentSubId: string, title: string) => {
+    if (!title.trim()) return;
+    const task = read().find((t) => t.id === taskId);
+    if (!task || !task.subtasksByDate || !task.subtasksByDate[dateISO]) return;
+    const byDate = { ...task.subtasksByDate };
+    byDate[dateISO] = byDate[dateISO].map((s) => {
+      if (s.id === parentSubId) {
+        const newChild: SubTask = { id: `st_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`, title: title.trim(), done: false };
+        return { ...s, children: [...(s.children ?? []), newChild] };
+      }
+      return s;
+    });
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Toggle child de uma subtarefa do dia. */
+  const toggleNestedSubTaskByDate = useCallback((taskId: string, dateISO: string, subId: string) => {
+    const task = read().find((t) => t.id === taskId);
+    if (!task || !task.subtasksByDate || !task.subtasksByDate[dateISO]) return;
+    const byDate = { ...task.subtasksByDate };
+    byDate[dateISO] = byDate[dateISO].map((s) => {
+      if (s.id === subId) return { ...s, done: !s.done };
+      if (s.children) return { ...s, children: s.children.map((c) => c.id === subId ? { ...c, done: !c.done } : c) };
+      return s;
+    });
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Remove child de uma subtarefa do dia. */
+  const removeNestedSubTaskByDate = useCallback((taskId: string, dateISO: string, parentId: string, childId: string) => {
+    const task = read().find((t) => t.id === taskId);
+    if (!task || !task.subtasksByDate || !task.subtasksByDate[dateISO]) return;
+    const byDate = { ...task.subtasksByDate };
+    byDate[dateISO] = byDate[dateISO].map((s) => s.id === parentId ? { ...s, children: (s.children ?? []).filter((c) => c.id !== childId) } : s);
     write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
   }, []);
 
@@ -507,6 +545,55 @@ export function useTasks() {
     const byDate = { ...task.subtasksByDate };
     byDate[dateISO] = byDate[dateISO].filter((s) => s.id !== subId);
     if (byDate[dateISO].length === 0) delete byDate[dateISO];
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Reordena subtarefas recorrentes (move up/down). */
+  const moveSubTask = useCallback((taskId: string, subId: string, direction: "up" | "down") => {
+    const task = read().find((t) => t.id === taskId);
+    if (!task) return;
+    const subs = [...task.subtasks];
+    const idx = subs.findIndex((s) => s.id === subId);
+    if (idx === -1) return;
+    if (direction === "up" && idx > 0) { [subs[idx - 1], subs[idx]] = [subs[idx], subs[idx - 1]]; }
+    if (direction === "down" && idx < subs.length - 1) { [subs[idx + 1], subs[idx]] = [subs[idx], subs[idx + 1]]; }
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasks: subs, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Edita o título de uma subtarefa recorrente. */
+  const renameSubTask = useCallback((taskId: string, subId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    function renameSubs(subs: SubTask[]): SubTask[] {
+      return subs.map((s) => {
+        if (s.id === subId) return { ...s, title: newTitle.trim() };
+        if (s.children) return { ...s, children: renameSubs(s.children) };
+        return s;
+      });
+    }
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasks: renameSubs(t.subtasks), updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Edita o título de uma subtarefa do dia. */
+  const renameSubTaskByDate = useCallback((taskId: string, dateISO: string, subId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    const task = read().find((t) => t.id === taskId);
+    if (!task || !task.subtasksByDate || !task.subtasksByDate[dateISO]) return;
+    const byDate = { ...task.subtasksByDate };
+    byDate[dateISO] = byDate[dateISO].map((s) => s.id === subId ? { ...s, title: newTitle.trim() } : s);
+    write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
+  }, []);
+
+  /** Reordena subtarefas do dia (move up/down). */
+  const moveSubTaskByDate = useCallback((taskId: string, dateISO: string, subId: string, direction: "up" | "down") => {
+    const task = read().find((t) => t.id === taskId);
+    if (!task || !task.subtasksByDate || !task.subtasksByDate[dateISO]) return;
+    const byDate = { ...task.subtasksByDate };
+    const subs = [...byDate[dateISO]];
+    const idx = subs.findIndex((s) => s.id === subId);
+    if (idx === -1) return;
+    if (direction === "up" && idx > 0) { [subs[idx - 1], subs[idx]] = [subs[idx], subs[idx - 1]]; }
+    if (direction === "down" && idx < subs.length - 1) { [subs[idx + 1], subs[idx]] = [subs[idx], subs[idx + 1]]; }
+    byDate[dateISO] = subs;
     write(read().map((t) => (t.id === taskId ? { ...t, subtasksByDate: byDate, updatedAt: Date.now() } : t)));
   }, []);
 
@@ -555,8 +642,15 @@ export function useTasks() {
     addNestedSubTask,
     removeSubTask,
     addSubTaskByDate,
+    addNestedSubTaskByDate,
     toggleSubTaskByDate,
+    toggleNestedSubTaskByDate,
     removeSubTaskByDate,
+    removeNestedSubTaskByDate,
+    moveSubTask,
+    moveSubTaskByDate,
+    renameSubTask,
+    renameSubTaskByDate,
     resetAll,
     addCategory,
     updateCategory,

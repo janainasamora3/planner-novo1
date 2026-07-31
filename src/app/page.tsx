@@ -17,6 +17,8 @@ import { TasksManager } from "@/components/dashboard/tasks-manager";
 import { ModoCavernaManager } from "@/components/dashboard/modo-caverna-manager";
 import { PlanejamentoManager } from "@/components/dashboard/planejamento-manager";
 import { FinanceManager } from "@/components/dashboard/finance-manager";
+import { IdeasManager } from "@/components/dashboard/ideas-manager";
+import { QuickTasksManager } from "@/components/dashboard/quick-tasks-manager";
 import { CalendarTasks } from "@/components/dashboard/calendar-tasks";
 import { BackupSection } from "@/components/dashboard/backup-section";
 
@@ -48,6 +50,8 @@ export default function Home() {
   const [cavernaPage, setCavernaPage] = useState<PageCard | null>(null);
   const [planejamentoPage, setPlanejamentoPage] = useState<PageCard | null>(null);
   const [financePage, setFinancePage] = useState<PageCard | null>(null);
+  const [ideasPage, setIdeasPage] = useState<PageCard | null>(null);
+  const [quickTasksPage, setQuickTasksPage] = useState<PageCard | null>(null);
 
   const editingPage = useMemo(
     () => pages.find((p) => p.id === editingPageId) || null,
@@ -87,6 +91,10 @@ export default function Home() {
       setPlanejamentoPage(page);
     } else if (page.special === "finance") {
       setFinancePage(page);
+    } else if (page.special === "ideas") {
+      setIdeasPage(page);
+    } else if (page.special === "quick-tasks") {
+      setQuickTasksPage(page);
     } else {
       setDetailPage(page);
     }
@@ -362,6 +370,16 @@ export default function Home() {
       {/* Gerenciador de Finanças */}
       {financePage && (
         <FinanceManager page={financePage} onClose={() => setFinancePage(null)} />
+      )}
+
+      {/* Gerenciador de Ideias */}
+      {ideasPage && (
+        <IdeasManager page={ideasPage} onClose={() => setIdeasPage(null)} />
+      )}
+
+      {/* Gerenciador de Tarefas Rápidas */}
+      {quickTasksPage && (
+        <QuickTasksManager page={quickTasksPage} onClose={() => setQuickTasksPage(null)} />
       )}
     </div>
   );

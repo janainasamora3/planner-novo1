@@ -13,7 +13,7 @@ export interface PageCard {
   /** Notas/conteúdo livre da página (markdown simples). */
   content?: string;
   /** Marca páginas com funcionalidade especial */
-  special?: "social-media" | "enterprise" | "business-plan" | "books" | "tasks" | "caverna" | "planejamento" | "finance";
+  special?: "social-media" | "enterprise" | "business-plan" | "books" | "tasks" | "caverna" | "planejamento" | "finance" | "quick-tasks" | "ideas";
   createdAt: number;
   updatedAt: number;
 }
@@ -43,11 +43,11 @@ export const DEFAULT_PAGES: PageCard[] = [
   { id: "n9", section: "negocios", title: "Plano Empresarial 2026", emoji: "🤝", color: "#1c1917", special: "business-plan", createdAt: Date.now(), updatedAt: Date.now() },
 
   // Vida Pessoal
-  { id: "p1", section: "pessoal", title: "Tarefas", emoji: "✅", color: "#7c2d12", special: "tasks", createdAt: Date.now(), updatedAt: Date.now() },
+  { id: "p1", section: "pessoal", title: "Tarefas", emoji: "✅", color: "#7c2d12", special: "quick-tasks", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p2", section: "pessoal", title: "Modo Caverna", emoji: "🧠", color: "#1e293b", special: "caverna", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p3", section: "pessoal", title: "Planejamento", emoji: "🗓️", color: "#1e3a8a", special: "planejamento", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p4", section: "pessoal", title: "Finanças", emoji: "💸", color: "#14532d", special: "finance", createdAt: Date.now(), updatedAt: Date.now() },
-  { id: "p5", section: "pessoal", title: "Cursos", emoji: "📚", color: "#1e1b4b", createdAt: Date.now(), updatedAt: Date.now() },
+  { id: "p5", section: "pessoal", title: "Ideias", emoji: "💡", color: "#1e1b4b", special: "ideas", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p6", section: "pessoal", title: "Exercícios", emoji: "🏃", color: "#7c2d12", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p7", section: "pessoal", title: "Fitness", emoji: "🥗", color: "#166534", createdAt: Date.now(), updatedAt: Date.now() },
   { id: "p8", section: "pessoal", title: "Senhas", emoji: "🔐", color: "#713f12", createdAt: Date.now(), updatedAt: Date.now() },
